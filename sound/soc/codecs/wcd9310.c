@@ -105,7 +105,6 @@ MODULE_PARM_DESC(cfilt_adjust_ms, "delay after adjusting cfilt voltage in ms");
 #define V_TYPE_THRESHOLD 700
 #endif
 /*OPPO 2012-12-28 zhzhyon Add end*/
->>>>>>> a0f5afd... sound: Merge oppo changes
 enum {
 	MBHC_USE_HPHL_TRIGGER = 1,
 	MBHC_USE_MB_TRIGGER = 2
