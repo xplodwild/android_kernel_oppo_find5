@@ -39,6 +39,10 @@
 #include "acpuclock-krait.h"
 #include "avs.h"
 
+#include <linux/seq_file.h>
+#include <linux/proc_fs.h>
+
+
 /* MUX source selects. */
 #define PRI_SRC_SEL_SEC_SRC	0
 #define PRI_SRC_SEL_HFPLL	1
@@ -60,6 +64,11 @@ static struct drv_data {
 	struct device *dev;
 } drv;
 
+/* OPPO 2012-12-30 zhenwx Add begin for show cpu serial number */
+static	u32 serial_number1 = 0;
+static	u32 serial_number2 = 0;
+static	u32 serial_number3 = 0;
+/* OPPO 2012-12-30 zhenwx Add end */
 static unsigned long acpuclk_krait_get_rate(int cpu)
 {
 	return drv.scalable[cpu].cur_speed->khz;
@@ -1053,6 +1062,32 @@ static int __init get_speed_bin(u32 pte_efuse)
 	return speed_bin;
 }
 
+
+/* OPPO 2012-12-24 wangjc Add begin for showing pvs. */
+static int g_tbl_idx = PVS_UNKNOWN;
+
+static int pvs_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", g_tbl_idx);
+	return 0;
+}
+
+static int pvs_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pvs_proc_show, NULL);
+}
+
+static const struct file_operations pvs_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= pvs_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static struct proc_dir_entry *pvs_entry;
+/* OPPO 2012-12-24 wangjc Add end */
+
 static int __init get_pvs_bin(u32 pte_efuse)
 {
 	uint32_t pvs_bin;
@@ -1090,8 +1125,40 @@ static struct pvs_table * __init select_freq_plan(u32 pte_efuse_phys,
 	bin_idx = get_speed_bin(pte_efuse_val);
 	tbl_idx = get_pvs_bin(pte_efuse_val);
 
+	/* OPPO 2012-12-24 wangjc Add begin for showing pvs. */
+	g_tbl_idx = tbl_idx;
+	/* Set up the proc file system */
+	pvs_entry = proc_create("pvs", 0666, NULL, &pvs_proc_fops);
+    /* OPPO 2012-12-24 wangjc Add end */
+
+    /* OPPO 2012-12-30 zhenwx Add begin for show cpu serial number */
+	proc_create("cserial", 0666, NULL, &cpu_sn_proc_fops);
+    /* OPPO 2012-12-30 zhenwx Add end */
+
 	return &pvs_tables[bin_idx][tbl_idx];
 }
+
+
+/* OPPO 2012-12-30 zhenwx Add begin for show cpu serial number */
+static int cserial_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "0x%x,  0x%x,  0x%x\n", serial_number1, serial_number2,serial_number3);
+	return 0;
+}
+
+static int cserial_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cserial_proc_show, NULL);
+}
+
+static const struct file_operations cpu_sn_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= cserial_proc_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+/* OPPO 2012-12-30 zhenwx Add end */
 
 static void __init drv_data_init(struct device *dev,
 				 const struct acpuclk_krait_params *params)
@@ -1123,6 +1190,7 @@ static void __init drv_data_init(struct device *dev,
 	BUG_ON(!pvs->table);
 
 	drv.acpu_freq_tbl = kmemdup(pvs->table, pvs->size, GFP_KERNEL);
+
 	BUG_ON(!drv.acpu_freq_tbl);
 	drv.boost_uv = pvs->boost_uv;
 

@@ -361,6 +361,16 @@ static void mdm_update_gpio_configs(struct mdm_device *mdev,
 	}
 }
 
+//#ifdef VENDOR_EDIT
+//WuJinping@OnlineRD.AirService.Phone 2013.1.20, Add for modem subsystem restart when no service
+void oppo_restart_modem(void)
+{
+		//mdm_drv->mdm_ready = 0;
+		subsystem_restart(EXTERNAL_MODEM);
+}
+//#endif /* VENDOR_EDIT */
+static DECLARE_DELAYED_WORK(mdm2ap_status_check_work, mdm2ap_status_check);
+
 static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
 {
@@ -981,6 +991,10 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 		goto errfatal_err;
 	}
 	mdev->mdm_errfatal_irq = irq;
+
+/* OPPO 2013-01-25 zhenwx Add begin for enable modem err fatal signal wakeup AP */
+	enable_irq_wake(irq);
+/* OPPO 2013-01-25 zhenwx Add end */
 
 errfatal_err:
 
