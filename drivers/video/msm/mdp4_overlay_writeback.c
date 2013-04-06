@@ -124,8 +124,7 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 	buf = (uint8 *) fbi->fix.smem_start;
 	buf += fbi->var.xoffset * bpp +
 		fbi->var.yoffset * fbi->fix.line_length;
-
-	/* MDP cmd block enable */
+	
 	mdp_clk_ctrl(1);
 
 	if (vctrl->base_pipe == NULL) {
@@ -459,6 +458,11 @@ void mdp4_wfd_init(int cndx)
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
 	}
+/* OPPO 2012-11-01 liuhd Add begin for wfd standy */
+#ifdef	CONFIG_VENDOR_EDIT
+	mdp_clk_ctrl(1); //liuhd
+#endif
+/* OPPO 2012-11-01 liuhd Add end */
 
 	vctrl = &vsync_ctrl_db[cndx];
 	if (vctrl->inited)
@@ -481,6 +485,13 @@ static void mdp4_wfd_wait4ov(int cndx)
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
 		return;
 	}
+	mdp4_writeback_overlay_kickoff(mfd, pipe);
+	mdp4_writeback_dma_busy_wait(mfd);
+/* OPPO 2012-11-01 liuhd Add begin for wfd standy */
+#ifdef	CONFIG_VENDOR_EDIT
+	mdp_clk_ctrl(0); //liuhd
+#endif	
+/* OPPO 2012-11-01 liuhd Add end */
 
 	vctrl = &vsync_ctrl_db[cndx];
 

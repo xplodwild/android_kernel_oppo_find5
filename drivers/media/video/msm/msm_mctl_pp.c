@@ -106,6 +106,7 @@ int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 	case MSM_V4L2_EXT_CAPTURE_MODE_RDI:
 		if (p_mctl->pp_info.pp_ctrl.pp_msg_type & OUTPUT_TYPE_R)
 			*pp_type = OUTPUT_TYPE_R;
+		*pp_divert_type =  OUTPUT_TYPE_R; /* OPPO HDR */
 		break;
 	case MSM_V4L2_EXT_CAPTURE_MODE_RDI2:
 		if (p_mctl->pp_info.pp_key & PP_RDI)
@@ -582,6 +583,9 @@ int msm_mctl_pp_release_free_frame(
 		   0, sizeof(struct msm_free_buf));
 
 	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst, &free_buf);
+	memset(&p_mctl->pp_info.div_frame[image_mode], 0, sizeof(struct msm_free_buf));/*OPPO HDR*/
+	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst,
+					image_mode, &free_buf);
 	D("%s: release free buf, rc = %d, phy = 0x%x",
 		__func__, rc, free_buf.ch_paddr[0]);
 
