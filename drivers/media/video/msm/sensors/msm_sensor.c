@@ -16,12 +16,18 @@
 #include "msm.h"
 #include "msm_ispif.h"
 #include "msm_camera_i2c_mux.h"
+/* OPPO 2012-09-15 yxq added begin for voltage supply */
+#include <linux/regulator/consumer.h>
+#include <mach/vreg.h>
+/* OPPO 2012-09-15 yxq added end */
 
 /*=============================================================*/
 void msm_sensor_adjust_frame_lines1(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	uint16_t cur_line = 0;
 	uint16_t exp_fl_lines = 0;
+
+	CDBG("%s: E --- res = %d\n", __func__, res);
 	if (s_ctrl->sensor_exp_gain_info) {
 		msm_camera_i2c_read(s_ctrl->sensor_i2c_client,
 			s_ctrl->sensor_exp_gain_info->coarse_int_time_addr,
@@ -117,15 +123,41 @@ int32_t msm_sensor_write_res_settings(struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t res)
 {
 	int32_t rc;
+
+	CDBG("%s: E --- res = %d\n", __func__, res);
 	rc = msm_sensor_write_conf_array(
 		s_ctrl->sensor_i2c_client,
 		s_ctrl->msm_sensor_reg->mode_settings, res);
+/* OPPO 2012-08-07 yxq modified begin for debug */
+#if 0
 	if (rc < 0)
 		return rc;
+#else
+	if (rc < 0)
+		{
+			CDBG("In msm_sensor_write_conf_array() failed. rc = %d\n", rc);
+			return rc;
+		}
+#endif
+/* OPPO 2012-08-07 yxq modified end */
 
+/* OPPO 2012-08-07 yxq modified begin for debug */
+#if 0
 	rc = msm_sensor_write_output_settings(s_ctrl, res);
 	if (rc < 0)
 		return rc;
+#else
+	if (s_ctrl->sensor_id_info->sensor_id_reg_addr != 0x0040)
+		{
+			rc = msm_sensor_write_output_settings(s_ctrl, res);
+			if (rc < 0)
+				return rc;
+		}
+#endif
+/* OPPO 2012-08-07 yxq modified end */
+	if (s_ctrl->func_tbl->sensor_adjust_frame_lines)
+		rc = s_ctrl->func_tbl->sensor_adjust_frame_lines(s_ctrl, res);
+	CDBG("%s: X\n", __func__);
 
 	return rc;
 }
@@ -151,8 +183,10 @@ int32_t msm_sensor_write_output_settings(struct msm_sensor_ctrl_t *s_ctrl,
 			fll},
 	};
 
+	CDBG("%s: E --- res = %d\n", __func__, res);
 	rc = msm_camera_i2c_write_tbl(s_ctrl->sensor_i2c_client, dim_settings,
 		ARRAY_SIZE(dim_settings), MSM_CAMERA_I2C_WORD_DATA);
+	CDBG("%s: X\n", __func__);
 	return rc;
 }
 
@@ -165,6 +199,7 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 			s_ctrl->vision_mode_flag == 0)
 		s_ctrl->func_tbl->sensor_adjust_frame_lines(s_ctrl);
 
+
 	msm_camera_i2c_write_tbl(
 		s_ctrl->sensor_i2c_client,
 		s_ctrl->msm_sensor_reg->start_stream_conf,
@@ -175,37 +210,43 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 
 void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 {
+	CDBG("%s: E\n", __func__);
 	msm_camera_i2c_write_tbl(
 		s_ctrl->sensor_i2c_client,
 		s_ctrl->msm_sensor_reg->stop_stream_conf,
 		s_ctrl->msm_sensor_reg->stop_stream_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
 	msm_sensor_delay_frames(s_ctrl);
+	CDBG("%s: X\n", __func__);
 }
 
 void msm_sensor_group_hold_on(struct msm_sensor_ctrl_t *s_ctrl)
 {
+	CDBG("%s: E\n", __func__);
 	msm_camera_i2c_write_tbl(
 		s_ctrl->sensor_i2c_client,
 		s_ctrl->msm_sensor_reg->group_hold_on_conf,
 		s_ctrl->msm_sensor_reg->group_hold_on_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
+	CDBG("%s: X\n", __func__);
 }
 
 void msm_sensor_group_hold_off(struct msm_sensor_ctrl_t *s_ctrl)
 {
+	CDBG("%s: E\n", __func__);
 	msm_camera_i2c_write_tbl(
 		s_ctrl->sensor_i2c_client,
 		s_ctrl->msm_sensor_reg->group_hold_off_conf,
 		s_ctrl->msm_sensor_reg->group_hold_off_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
+	CDBG("%s: X\n", __func__);
 }
 
 int32_t msm_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl,
 						struct fps_cfg *fps)
 {
 	s_ctrl->fps_divider = fps->fps_div;
-
+	CDBG("%s: s_ctrl->fps_divider=%d\n", __func__, fps->fps_div);
 	return 0;
 }
 
@@ -214,12 +255,15 @@ int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 {
 	uint32_t fl_lines;
 	uint8_t offset;
+
+	//CDBG("%s: E---gain=%d, line=%d\n", __func__, gain, line);
 	fl_lines = s_ctrl->curr_frame_length_lines;
 	fl_lines = (fl_lines * s_ctrl->fps_divider) / Q10;
 	offset = s_ctrl->sensor_exp_gain_info->vert_offset;
 	if (line > (fl_lines - offset))
 		fl_lines = line + offset;
 
+	//CDBG("%s: fl_lines=%d, line=%d, gain=%d\n", __func__, fl_lines, line, gain);
 	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_output_reg_addr->frame_length_lines, fl_lines,
@@ -231,6 +275,7 @@ int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
 		MSM_CAMERA_I2C_WORD_DATA);
 	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
+	//CDBG("%s: X\n", __func__);
 	return 0;
 }
 
@@ -248,6 +293,7 @@ int32_t msm_sensor_write_exp_gain2(struct msm_sensor_ctrl_t *s_ctrl,
 		line = fl_lines - offset;
 	}
 
+	//CDBG("%s: 11111111111111111111111111111 line=%d, gain=%d\n", __func__, line, gain);
 	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_output_reg_addr->line_length_pclk, ll_pclk,
@@ -289,6 +335,11 @@ int32_t msm_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			int update_type, int res)
 {
 	int32_t rc = 0;
+
+	CDBG("%s: E---update_type=%d, res=%d\n", __func__, update_type, res);
+	s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
+	msleep(30);
+
 	if (update_type == MSM_SENSOR_REG_INIT) {
 		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 		msm_sensor_write_init_settings(s_ctrl);
@@ -298,6 +349,7 @@ int32_t msm_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
 			output_settings[res].op_pixel_clk);
 	}
+	CDBG("%s: X\n", __func__);
 	return rc;
 }
 
@@ -305,6 +357,8 @@ int32_t msm_sensor_set_sensor_mode(struct msm_sensor_ctrl_t *s_ctrl,
 	int mode, int res)
 {
 	int32_t rc = 0;
+
+	CDBG("%s: E---mode=%d, res=%d\n", __func__, mode, res);
 	if (s_ctrl->curr_res != res) {
 		s_ctrl->curr_frame_length_lines =
 			s_ctrl->msm_sensor_reg->
@@ -325,6 +379,7 @@ int32_t msm_sensor_set_sensor_mode(struct msm_sensor_ctrl_t *s_ctrl,
 			return rc;
 		s_ctrl->curr_res = res;
 	}
+	CDBG("%s: X\n", __func__);
 
 	return rc;
 }
@@ -336,7 +391,7 @@ int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 	s_ctrl->fps_divider = Q10;
 	s_ctrl->cam_mode = MSM_SENSOR_MODE_INVALID;
 
-	CDBG("%s: %d\n", __func__, __LINE__);
+	CDBG("%s: E---mode=%d\n", __func__, mode);
 	if (mode != s_ctrl->cam_mode) {
 		s_ctrl->curr_res = MSM_SENSOR_INVALID_RES;
 		s_ctrl->cam_mode = mode;
@@ -349,6 +404,7 @@ int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = s_ctrl->func_tbl->sensor_setting(s_ctrl,
 				MSM_SENSOR_REG_INIT, 0);
 	}
+	CDBG("%s: X\n", __func__);
 	return rc;
 }
 
@@ -356,20 +412,36 @@ int32_t msm_sensor_get_output_info(struct msm_sensor_ctrl_t *s_ctrl,
 		struct sensor_output_info_t *sensor_output_info)
 {
 	int rc = 0;
+
+	CDBG("%s: E\n", __func__);
 	sensor_output_info->num_info = s_ctrl->msm_sensor_reg->num_conf;
 	if (copy_to_user((void *)sensor_output_info->output_info,
 		s_ctrl->msm_sensor_reg->output_settings,
 		sizeof(struct msm_sensor_output_info_t) *
 		s_ctrl->msm_sensor_reg->num_conf))
 		rc = -EFAULT;
+	CDBG("%s: X\n", __func__);
 
 	return rc;
 }
 
 static int32_t msm_sensor_release(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	CDBG("%s called\n", __func__);
+	long fps = 0;
+	uint32_t delay = 0;
+
+	CDBG("%s: E\n", __func__);
 	s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
+	if (s_ctrl->curr_res != MSM_SENSOR_INVALID_RES) {
+		fps = s_ctrl->msm_sensor_reg->
+			output_settings[s_ctrl->curr_res].vt_pixel_clk /
+			s_ctrl->curr_frame_length_lines /
+			s_ctrl->curr_line_length_pclk;
+		delay = 1000 / fps;
+		CDBG("%s fps = %ld, delay = %d\n", __func__, fps, delay);
+		msleep(delay);
+	}
+	CDBG("%s: X\n", __func__);
 	return 0;
 }
 
@@ -380,6 +452,8 @@ long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	void __user *argp = (void __user *)arg;
 	if (s_ctrl->sensor_state == MSM_SENSOR_POWER_DOWN)
 		return -EINVAL;
+
+	CDBG("%s: E---cmd=%d\n", __func__, cmd);
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_CFG:
 		return s_ctrl->func_tbl->sensor_config(s_ctrl, argp);
@@ -389,11 +463,13 @@ long msm_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_sensor_csi_info *csi_info =
 			(struct msm_sensor_csi_info *)arg;
 		s_ctrl->is_csic = csi_info->is_csic;
+		CDBG("%s: csid_version=%d, is_csic=%d\n", __func__, s_ctrl->csid_version, s_ctrl->is_csic);
 		return 0;
 	}
 	default:
 		return -ENOIOCTLCMD;
 	}
+	CDBG("%s: X\n", __func__);
 }
 
 int32_t msm_sensor_get_csi_params(struct msm_sensor_ctrl_t *s_ctrl,
@@ -426,6 +502,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		sizeof(struct sensor_cfg_data)))
 		return -EFAULT;
 	mutex_lock(s_ctrl->msm_sensor_mutex);
+
 	CDBG("%s:%d %s cfgtype = %d\n", __func__, __LINE__,
 		s_ctrl->sensordata->sensor_name, cdata.cfgtype);
 	switch (cdata.cfgtype) {
@@ -459,6 +536,8 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 					cdata.cfg.exp_gain.line,
 					cdata.cfg.exp_gain.luma_avg,
 					cdata.cfg.exp_gain.fgain);
+			s_ctrl->prev_gain = cdata.cfg.exp_gain.gain;
+			s_ctrl->prev_line = cdata.cfg.exp_gain.line;
 			break;
 
 		case CFG_SET_PICT_EXP_GAIN:
@@ -605,6 +684,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		}
 
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
+	//CDBG("%s: X\n", __func__);
 
 	return rc;
 }
@@ -1652,10 +1732,392 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	return 0;
 }
 
+/* OPPO 2012-11-29 yxq Add begin for imx135's boot up sequence */
+int32_t imx135_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+	CDBG("%s: %d\n", __func__, __LINE__);
+	s_ctrl->reg_ptr = kzalloc(sizeof(struct regulator *)
+			* data->sensor_platform_info->num_vreg, GFP_KERNEL);
+	if (!s_ctrl->reg_ptr) {
+		pr_err("%s: could not allocate mem for regulators\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	rc = msm_camera_request_gpio_table(data, 1);
+	if (rc < 0) {
+		pr_err("%s: request gpio failed\n", __func__);
+		goto request_gpio_failed;
+	}
+
+	rc = msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 1);
+	if (rc < 0) {
+		pr_err("%s: regulator on failed\n", __func__);
+		goto config_vreg_failed;
+	}
+
+	rc = msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 1);
+	if (rc < 0) {
+		pr_err("%s: enable regulator failed\n", __func__);
+		goto enable_vreg_failed;
+	}
+
+	if (s_ctrl->clk_rate != 0)
+		cam_clk_info->clk_rate = s_ctrl->clk_rate;
+
+	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
+	if (rc < 0) {
+		pr_err("%s: clk enable failed\n", __func__);
+		goto enable_clk_failed;
+	}
+
+    rc = msm_camera_config_gpio_table(data, 1);
+	if (rc < 0) {
+		pr_err("%s: config gpio failed\n", __func__);
+		goto config_gpio_failed;
+	}
+
+	usleep_range(1000, 2000);
+	if (data->sensor_platform_info->ext_power_ctrl != NULL)
+		data->sensor_platform_info->ext_power_ctrl(1);
+
+	if (data->sensor_platform_info->i2c_conf &&
+		data->sensor_platform_info->i2c_conf->use_i2c_mux)
+		msm_sensor_enable_i2c_mux(data->sensor_platform_info->i2c_conf);
+
+	return rc;
+
+config_gpio_failed:
+	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 0);
+enable_clk_failed:
+    msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 0);
+
+
+enable_vreg_failed:
+	msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+config_vreg_failed:
+	msm_camera_request_gpio_table(data, 0);
+request_gpio_failed:
+	kfree(s_ctrl->reg_ptr);
+	return rc;
+}
+
+int32_t imx135_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+	CDBG("%s\n", __func__);
+	if (data->sensor_platform_info->i2c_conf &&
+		data->sensor_platform_info->i2c_conf->use_i2c_mux)
+		msm_sensor_disable_i2c_mux(
+			data->sensor_platform_info->i2c_conf);
+
+	if (data->sensor_platform_info->ext_power_ctrl != NULL)
+		data->sensor_platform_info->ext_power_ctrl(0);
+	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 0);
+	msm_camera_config_gpio_table(data, 0);
+	msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+	msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+	msm_camera_request_gpio_table(data, 0);
+	kfree(s_ctrl->reg_ptr);
+	return 0;
+}
+
+/* OPPO 2012-11-29 yxq Add end */
+
+/* OPPO 2012-09-15 yxq added begin for voltage supply changed */
+
+/* OPPO 2012-09-15 yxq added begin for reason */
+	static struct regulator *ldo8;
+	static struct regulator *lvs5;
+	static struct regulator *ldo16;
+	static struct regulator *ldo21;
+/* OPPO 2012-09-15 yxq added end */
+
+int32_t s5k6a3yx_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+
+	CDBG("%s: %d\n", __func__, __LINE__);
+/* OPPO 2012-09-15 yxq deleted begin for reason */
+	#if 0
+	s_ctrl->reg_ptr = kzalloc(sizeof(struct regulator *)
+			* data->sensor_platform_info->num_vreg, GFP_KERNEL);
+	if (!s_ctrl->reg_ptr) {
+		pr_err("%s: could not allocate mem for regulators\n",
+			__func__);
+		return -ENOMEM;
+	}
+	#endif
+/* OPPO 2012-09-15 yxq deleted end */
+
+	rc = msm_camera_request_gpio_table(data, 1);
+	if (rc < 0) {
+		pr_err("%s: request gpio failed\n", __func__);
+		goto request_gpio_failed;
+	}
+/* OPPO 2012-09-15 yxq modified begin for reason */
+  #if 0
+	rc = msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 1);
+	if (rc < 0) {
+		pr_err("%s: regulator on failed\n", __func__);
+		goto config_vreg_failed;
+	}
+
+	rc = msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 1);
+	if (rc < 0) {
+		pr_err("%s: enable regulator failed\n", __func__);
+		goto enable_vreg_failed;
+	}
+  #else
+ 	// for old GSBI1's voltage
+	ldo21 = regulator_get(NULL, "8921_l21");
+	if (IS_ERR(ldo21)){
+		pr_err("%s: VREG LDO21 get failed\n", __func__);
+		ldo21 = NULL;
+		//goto ldo16_get_failed;
+		}
+	if (regulator_set_voltage(ldo21, 1800000, 1800000)) {
+		pr_err("%s: VREG LDO21 set voltage failed\n",  __func__);
+		//goto ldo16_set_voltage_failed;
+		}
+	if (regulator_enable(ldo21)) {
+		pr_err("%s: VREG LDO21 enable failed\n", __func__);
+		//goto ldo16_enable_failed;
+		}
+	msleep(5);
+
+	ldo8 = regulator_get(NULL, "8921_l8");
+	if (IS_ERR(ldo8)){
+		pr_err("%s: VREG LDO8 get failed\n", __func__);
+		ldo8 = NULL;
+		goto ldo8_get_failed;
+		}
+	if (regulator_set_voltage(ldo8, 2800000, 2850000)) {
+		pr_err("%s: VREG LDO8 set voltage failed\n",  __func__);
+		goto ldo8_set_voltage_failed;
+		}
+	if (regulator_enable(ldo8)) {
+		pr_err("%s: VREG LDO8 enable failed\n", __func__);
+		goto ldo8_enable_failed;
+		}
+  #endif
+/* OPPO 2012-09-15 yxq modified end */
+	msleep(1);
+	rc = msm_camera_config_gpio_table(data, 1);
+	if (rc < 0) {
+		pr_err("%s: config gpio failed\n", __func__);
+		goto config_gpio_failed;
+	}
+	msleep(1);
+
+/* OPPO 2012-09-15 yxq added begin for reason */
+	lvs5 = regulator_get(NULL, "8921_lvs5");
+	if (IS_ERR(lvs5)){
+		pr_err("%s: VREG LVS5 get failed\n", __func__);
+		lvs5 = NULL;
+		goto lvs5_get_failed;
+		}
+	if (regulator_enable(lvs5)) {
+		pr_err("%s: VREG LVS5 enable failed\n", __func__);
+		goto lvs5_enable_failed;
+		}
+	ldo16 = regulator_get(NULL, "8921_l16");
+	if (IS_ERR(ldo16)){
+		pr_err("%s: VREG LDO16 get failed\n", __func__);
+		ldo16 = NULL;
+		goto ldo16_get_failed;
+		}
+	if (regulator_set_voltage(ldo16, 2800000, 2850000)) {
+		pr_err("%s: VREG LDO16 set voltage failed\n",  __func__);
+		goto ldo16_set_voltage_failed;
+		}
+	if (regulator_enable(ldo16)) {
+		pr_err("%s: VREG LDO16 enable failed\n", __func__);
+		goto ldo16_enable_failed;
+		}
+/* OPPO 2012-09-15 yxq added end */
+
+	if (s_ctrl->clk_rate != 0)
+		cam_clk_info->clk_rate = s_ctrl->clk_rate;
+
+	rc = msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 1);
+	if (rc < 0) {
+		pr_err("%s: clk enable failed\n", __func__);
+		goto enable_clk_failed;
+	}
+
+	usleep_range(1000, 2000);
+	if (data->sensor_platform_info->ext_power_ctrl != NULL)
+		data->sensor_platform_info->ext_power_ctrl(1);
+
+	if (data->sensor_platform_info->i2c_conf &&
+		data->sensor_platform_info->i2c_conf->use_i2c_mux)
+		msm_sensor_enable_i2c_mux(data->sensor_platform_info->i2c_conf);
+
+	return rc;
+
+enable_clk_failed:
+/* OPPO 2012-09-15 yxq modified begin for reason */
+#if 0
+	msm_camera_config_gpio_table(data, 0);
+#else
+	regulator_disable(ldo16);
+#endif
+/* OPPO 2012-09-15 yxq modified end */
+/* OPPO 2012-09-15 yxq added begin for reason */
+ldo16_enable_failed:
+ldo16_set_voltage_failed:
+		regulator_put(ldo16);
+ldo16_get_failed:
+		regulator_disable(lvs5);
+lvs5_enable_failed:
+		regulator_put(lvs5);
+lvs5_get_failed:
+		msm_camera_config_gpio_table(data, 0);
+config_gpio_failed:
+		regulator_disable(ldo8);
+ldo8_enable_failed:
+ldo8_set_voltage_failed:
+		regulator_put(ldo8);
+ldo8_get_failed:
+		msm_camera_request_gpio_table(data, 0);
+request_gpio_failed:
+		return rc;
+/* OPPO 2012-09-15 yxq added end */
+
+/* OPPO 2012-09-15 yxq deleted begin for reason */
+#if 0
+config_gpio_failed:
+	msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+			s_ctrl->sensordata->sensor_platform_info->num_vreg,
+			s_ctrl->reg_ptr, 0);
+
+enable_vreg_failed:
+	msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+config_vreg_failed:
+	msm_camera_request_gpio_table(data, 0);
+request_gpio_failed:
+  #if 0
+	kfree(s_ctrl->reg_ptr);
+  #endif
+ #endif
+ /* OPPO 2012-09-15 yxq deleted end */
+	//return rc;
+}
+
+int32_t s5k6a3yx_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
+	CDBG("%s\n", __func__);
+	if (data->sensor_platform_info->i2c_conf &&
+		data->sensor_platform_info->i2c_conf->use_i2c_mux)
+		msm_sensor_disable_i2c_mux(
+			data->sensor_platform_info->i2c_conf);
+
+	if (data->sensor_platform_info->ext_power_ctrl != NULL)
+		data->sensor_platform_info->ext_power_ctrl(0);
+	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
+		cam_clk_info, &s_ctrl->cam_clk, ARRAY_SIZE(cam_clk_info), 0);
+	msm_camera_config_gpio_table(data, 0);
+/* OPPO 2012-09-15 yxq modified begin for voltage supply */
+#if 0
+	msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+	msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
+		s_ctrl->sensordata->sensor_platform_info->cam_vreg,
+		s_ctrl->sensordata->sensor_platform_info->num_vreg,
+		s_ctrl->reg_ptr, 0);
+#else
+	msleep(1);
+	if (ldo16) {
+		regulator_disable(ldo16);
+		regulator_put(ldo16);
+		}
+	if (lvs5) {
+		regulator_disable(lvs5);
+		regulator_put(lvs5);
+		}
+	if (ldo8) {
+		regulator_disable(ldo8);
+		regulator_put(ldo8);
+		}
+	// for GSBI1's voltage
+	if (ldo21) {
+		regulator_disable(ldo21);
+		regulator_put(ldo21);
+		}
+#endif
+/* OPPO 2012-09-15 yxq modified end */
+	msm_camera_request_gpio_table(data, 0);
+/* OPPO 2012-09-15 yxq deleted begin for reason */
+#if 0
+	kfree(s_ctrl->reg_ptr);
+#endif
+/* OPPO 2012-09-15 yxq deleted end */
+	return 0;
+}
+/* OPPO 2012-09-15 yxq added end */
+
 int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
+
+/* OPPO 2012-08-06 yxq added begin for front camera */
+#if 1
+	if (s_ctrl->sensor_id_info->sensor_id_reg_addr == 0x0040)
+		{
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x002C, 0x0000,
+				MSM_CAMERA_I2C_WORD_DATA);
+			msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x002E, 0x0040,
+				MSM_CAMERA_I2C_WORD_DATA);
+			rc = msm_camera_i2c_read(
+				s_ctrl->sensor_i2c_client,
+				0x0F12, &chipid,
+				MSM_CAMERA_I2C_WORD_DATA);
+			CDBG("msm_sensor name: %s\n", s_ctrl->sensordata->sensor_name);
+			CDBG("msm_sensor id: %x\n", chipid);
+			return rc;
+		}
+#endif
+/* OPPO 2012-08-06 yxq added end */
 	rc = msm_camera_i2c_read(
 			s_ctrl->sensor_i2c_client,
 			s_ctrl->sensor_id_info->sensor_id_reg_addr, &chipid,
@@ -1668,6 +2130,8 @@ int32_t msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 
 	CDBG("%s: read id: %x expected id %x:\n", __func__, chipid,
 		s_ctrl->sensor_id_info->sensor_id);
+	CDBG("msm_sensor name: %s\n", s_ctrl->sensordata->sensor_name);
+	CDBG("msm_sensor id: %x\n", chipid);
 	if (chipid != s_ctrl->sensor_id_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
 		return -ENODEV;
@@ -1838,6 +2302,8 @@ int32_t msm_sensor_power(struct v4l2_subdev *sd, int on)
 {
 	int rc = 0;
 	struct msm_sensor_ctrl_t *s_ctrl = get_sctrl(sd);
+
+	CDBG("%s: E---on=%d\n", __func__, on);
 	mutex_lock(s_ctrl->msm_sensor_mutex);
 	if (on) {
 		rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
@@ -1868,6 +2334,8 @@ int32_t msm_sensor_power(struct v4l2_subdev *sd, int on)
 		s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
 	}
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
+	CDBG("%s: X\n", __func__);
+
 	return rc;
 }
 

@@ -576,7 +576,6 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 
 	if (!in_interrupt())
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
-
 	if (pipe->dma_blt_addr) {
 #ifdef BLT_RGB565
 		bpp = 2; /* overlay ouput is RGB565 */
@@ -2895,6 +2894,25 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 		if (worst_mdp_clk < pipe->req_clk)
 			worst_mdp_clk = pipe->req_clk;
 
+		if (pipe->req_clk > mdp_max_clk) {
+			if (pipe->mixer_num == MDP4_MIXER0)
+				perf_req->use_ov_blt[0] = 1;
+			if (pipe->mixer_num == MDP4_MIXER1)
+				perf_req->use_ov_blt[1] = 1;
+		}
+#if 0	//huyu ,add
+/* OPPO 2012-11-22 huyu add for solving vertical play 1080p*/
+		else
+		{
+			if (/*(pipe->mixer_num == MDP4_MIXER0)&&*/((pipe->src_w>1000) || (pipe->src_h>1000)))
+			{
+				printk("huyu add log ! pipe->req_clk = %d\n", pipe->req_clk);
+				 perf_req->use_ov0_blt = 1;
+			}
+		}
+/* OPPO 2012-11-22 huyu add for solving vertical play 1080p*/
+#endif
+
 		if (pipe->req_clk > mdp_max_clk)
 			perf_req->use_ov_blt[pipe->mixer_num] = 1;
 
@@ -2974,6 +2992,10 @@ int mdp4_overlay_mdp_pipe_req(struct mdp4_overlay_pipe *pipe,
 		       __func__, ret);
 		ret = -EINVAL;
 	}
+	/* OPPO 2012-09-08 zhengzk Add begin for fix MDP underrun for MIPI */
+	//pipe->req_clk = mdp_max_clk;
+	/* OPPO 2012-09-08 zhengzk Add end */
+
 	return ret;
 }
 

@@ -981,21 +981,21 @@ void mipi_dsi_controller_cfg(int enable)
 			   status,
 			   ((status & 0x02) == 0),
 			       sleep_us, timeout_us))
-		pr_info("%s: DSI status=%x failed\n", __func__, status);
 
-	/* Check for x_HS_FIFO_EMPTY */
-	if (readl_poll_timeout((MIPI_DSI_BASE + 0x0008),
-			   status,
-			   ((status & 0x11111000) == 0x11111000),
-			       sleep_us, timeout_us))
-		pr_info("%s: FIFO status=%x failed\n", __func__, status);
 
-	/* Check for VIDEO_MODE_ENGINE_BUSY */
-	if (readl_poll_timeout((MIPI_DSI_BASE + 0x0004),
-			   status,
-			   ((status & 0x08) == 0),
-			       sleep_us, timeout_us))
-		pr_info("%s: DSI status=%x failed\n", __func__, status);
+ 	 /* Check for x_HS_FIFO_EMPTY */
+ 	 if (readl_poll_timeout((MIPI_DSI_BASE + 0x0008),
+ 				status,
+ 				((status & 0x11111000) == 0x11111000),
+ 					sleep_us, timeout_us))
+  	 	pr_info("%s: FIFO status=%x failed\n", __func__, status);
+
+ 	 /* Check for VIDEO_MODE_ENGINE_BUSY */
+ 	 if (readl_poll_timeout((MIPI_DSI_BASE + 0x0004),
+ 				status,
+ 				((status & 0x08) == 0),
+ 					sleep_us, timeout_us))
+ 		 pr_info("%s: DSI status=%x failed\n", __func__, status);
 
 	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
 	if (enable)

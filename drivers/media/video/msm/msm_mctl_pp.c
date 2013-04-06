@@ -581,7 +581,10 @@ int msm_mctl_pp_release_free_frame(
 	memset(&p_mctl->pp_info.div_frame[image_mode],
 		   0, sizeof(struct msm_free_buf));
 
-	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst, &free_buf);
+	memset(&p_mctl->pp_info.div_frame[image_mode], 0, sizeof(struct msm_free_buf));/*OPPO HDR*/
+	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst,
+					image_mode, &free_buf);
+
 	D("%s: release free buf, rc = %d, phy = 0x%x",
 		__func__, rc, free_buf.ch_paddr[0]);
 

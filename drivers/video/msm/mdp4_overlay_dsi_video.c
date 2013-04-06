@@ -621,6 +621,11 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 	pinfo = &mfd->panel_info;
 
+/* OPPO 2012-11-30 huyu modify for play video crash*/
+#ifdef CONFIG_VENDOR_EDIT
+	pinfo = &mfd->panel_info;
+#endif
+/* OPPO 2012-11-30 huyu modify for play video crash*/
 	if (!mfd)
 		return -ENODEV;
 
@@ -674,6 +679,20 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	}
 
 	atomic_set(&vctrl->suspend, 0);
+
+	if (!(mfd->cont_splash_done)) {
+		mfd->cont_splash_done = 1;
+		mdp4_dsi_video_wait4dmap_done(0);
+		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
+		mipi_dsi_controller_cfg(0);
+/* OPPO 2012-11-30 huyu modify for boot LOGO bluescreen*/
+#ifdef CONFIG_VENDOR_EDIT
+		/* Clks are enabled in probe.
+		   Disabling clocks now */
+		mdp_clk_ctrl(0);
+#endif
+/* OPPO 2012-11-30 huyu modify for boot LOGO bluescreen*/
+	}
 
 	pipe->src_height = fbi->var.yres;
 	pipe->src_width = fbi->var.xres;
@@ -1127,6 +1146,11 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 	int cndx = 0;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
+/* OPPO 2012-11-30 huyu modify for play video crash*/
+#ifdef CONFIG_VENDOR_EDIT
+	long long vtime;
+#endif
+/* OPPO 2012-11-30 huyu modify for play video crash*/
 
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
@@ -1173,6 +1197,16 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 		tg_enabled = inpdw(MDP_BASE + DSI_VIDEO_BASE) & 0x01;
 		if (tg_enabled) {
 			mdp4_dsi_video_wait4vsync(cndx);
+/* OPPO 2012-11-30 huyu modify for play video crash*/
+#ifdef CONFIG_VENDOR_EDIT
+
+	if (vctrl->blt_ctrl == BLT_SWITCH_TG_OFF) {
+		int tg_enabled;
+
+		vctrl->blt_change = 0;
+		tg_enabled = inpdw(MDP_BASE + DSI_VIDEO_BASE) & 0x01;
+		if (tg_enabled) {
+			mdp4_dsi_video_wait4vsync(0, &vtime);
 			MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
 			mdp4_dsi_video_wait4dmap_done(0);
 		}
@@ -1190,6 +1224,7 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 			MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
 		}
 	}
+#endif
 }
 
 void mdp4_dsi_video_overlay_blt(struct msm_fb_data_type *mfd,

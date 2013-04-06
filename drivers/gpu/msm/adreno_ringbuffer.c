@@ -27,6 +27,14 @@
 #include "a3xx_reg.h"
 
 #define GSL_RB_NOP_SIZEDWORDS				2
+/*
+ * CP DEBUG settings for all cores:
+ * DYNAMIC_CLK_DISABLE [27] - turn off the dynamic clock control
+ * PROG_END_PTR_ENABLE [25] - Allow 128 bit writes to the VBIF
+ */
+
+#define CP_DEBUG_DEFAULT ((1 << 27) | (1 << 25))
+
 
 /*
  * CP DEBUG settings for all cores:
