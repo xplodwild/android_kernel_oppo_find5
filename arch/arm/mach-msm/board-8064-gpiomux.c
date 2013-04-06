@@ -1595,3 +1595,6 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(mpq8064_uartdm_configs,
 				ARRAY_SIZE(mpq8064_uartdm_configs));
 }
+
+
+

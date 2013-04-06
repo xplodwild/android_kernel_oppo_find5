@@ -385,3 +385,6 @@ void __init apq8064_init_mmc(void)
 	if (apq8064_sdc4_pdata)
 		apq8064_add_sdcc(4, apq8064_sdc4_pdata);
 }
+
+
+

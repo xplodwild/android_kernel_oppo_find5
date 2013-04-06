@@ -769,3 +769,6 @@ void __init configure_apq8064_pm8917_power_grid(void)
 	 */
 	apq8064_rpm_regulator_pdata.version = RPM_VREG_VERSION_8960_PM8917;
 }
+
+
+

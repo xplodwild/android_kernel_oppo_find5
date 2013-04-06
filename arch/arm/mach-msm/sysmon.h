@@ -39,7 +39,12 @@ enum subsys_id {
 int sysmon_send_event(enum subsys_id dest_ss, const char *event_ss,
 		      enum subsys_notif_type notif);
 int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len);
+
+#ifdef CONFIG_VENDOR_EDIT
+/* DuYuanHua@OnLineRD.AirService.MDM, 2012/12/04, Add for CR401598 Communicate MDM A5 thru' SYSMON */
 int sysmon_send_shutdown(enum subsys_id dest_ss);
+#endif /* VENDOR_EDIT */
+
 #else
 static inline int sysmon_send_event(enum subsys_id dest_ss,
 				    const char *event_ss,

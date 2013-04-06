@@ -482,6 +482,11 @@ config MSM_ADM3
 
 menu "MSM Board Selection"
 
+#/* OPPO 2012-11-13 zwx Add begin for distinguish oppo code */
+config VENDOR_EDIT
+	bool "VENDOR_EDIT"
+	default y
+#/* OPPO 2012-11-13 zwx Add end */
 config MACH_HALIBUT
 	depends on ARCH_MSM7X01A
 	depends on MSM_STACKED_MEMORY
@@ -2174,6 +2179,12 @@ config MSM_MEMORY_DUMP
 		of deadlocks or cpu hangs these dump regions are captured to
 		give a snapshot of the system at the time of the crash.
 
+config OPPO_DEBUG_ASSERT
+	bool "OPPO debug assert driver"
+	default n
+	help
+		This for oppo debug assert function, open it will register dev under /dev/otracer
+
 config MSM_DLOAD_MODE
 	bool "Enable download mode on crashes"
 	depends on ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSM9615
@@ -2608,11 +2619,20 @@ config MSM_HSIC_SYSMON_TEST
 	  can be read and written to send character data to the sysmon port of
 	  the modem over USB.
 
+<<<<<<< HEAD
 config MSM_CPU_PWRCTL
 	bool "Ensures that krait droop detectors are always off"
 	help
 	  Droop detector mechanism can adversely affect krait plls during
 	  stand alone power collapse operation. Selecting this option
 	  ensures that they are always off.
+=======
+	
+# add by zhengzk start
+config FB_MSM_MIPI_BACKLIGHT_LM3528
+	bool "FB_MSM_MIPI_BACKLIGHT_LM3528"
+	default y
+# add by zhengzk end 
+>>>>>>> 159810f... arm: Import mach-msm changes from Oppo source
 
 endif

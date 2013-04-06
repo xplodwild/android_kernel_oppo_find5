@@ -310,7 +310,41 @@ static struct mdm_ops mdm_cb = {
 	.image_upgrade_cb = mdm_image_upgrade,
 };
 
+<<<<<<< HEAD
 int mdm_get_ops(struct mdm_ops **mdm_ops)
+=======
+static int __init mdm_modem_probe(struct platform_device *pdev)
+{
+	return mdm_common_create(pdev, &mdm_cb);
+}
+
+static int __devexit mdm_modem_remove(struct platform_device *pdev)
+{
+
+	return mdm_common_modem_remove(pdev);
+}
+
+static void mdm_modem_shutdown(struct platform_device *pdev)
+{
+	mdm_common_modem_shutdown(pdev);
+}
+
+static struct platform_driver mdm_modem_driver = {
+	.remove         = mdm_modem_remove,
+	.shutdown	= mdm_modem_shutdown,
+	.driver         = {
+		.name = "mdm2_modem",
+		.owner = THIS_MODULE
+	},
+};
+
+static int __init mdm_modem_init(void)
+{
+	return platform_driver_probe(&mdm_modem_driver, mdm_modem_probe);
+}
+
+static void __exit mdm_modem_exit(void)
+>>>>>>> 159810f... arm: Import mach-msm changes from Oppo source
 {
 	*mdm_ops = &mdm_cb;
 	return 0;

@@ -1098,3 +1098,6 @@ void __init apq8064_set_display_params(char *prim_panel, char *ext_panel,
 	msm_fb_pdata.ext_resolution = resolution;
 	hdmi_msm_data.is_mhl_enabled = mhl_display_enabled;
 }
+
+
+

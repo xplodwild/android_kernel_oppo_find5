@@ -787,3 +787,6 @@ struct msm_camera_board_info apq8064_camera_board_info = {
 };
 #endif
 #endif
+
+
+
