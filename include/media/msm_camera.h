@@ -1230,6 +1230,19 @@ struct focus_cfg {
 	int dir;
 };
 
+enum sensor_hdr_update_t/*OPPO HDR*/
+{
+	SENSOR_HDR_UPDATE_AWB,
+	SENSOR_HDR_UPDATE_LSC,
+};
+
+struct sensor_hdr_update_parm_t/*OPPO HDR*/
+{
+	enum sensor_hdr_update_t type;
+	uint16_t awb_gain_r, awb_gain_b;
+	uint8_t lsc_table[504];
+};
+
 struct fps_cfg {
 	uint16_t f_mult;
 	uint16_t fps_div;

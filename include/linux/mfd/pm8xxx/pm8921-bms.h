@@ -83,6 +83,22 @@ struct pm8921_bms_platform_data {
 };
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
+/* OPPO 2012-10-10 chendx Modify begin for OPPO 2500mAh batterydata */
+#if 0
+extern struct pm8921_bms_battery_data  palladium_1500_data;
+#else
+extern struct pm8921_bms_battery_data  OPPO_palladium_2500mAh_data;
+#endif
+/* OPPO 2012-10-10 chendx Modify end */
+extern struct pm8921_bms_battery_data  desay_5200_data;
+
+/* OPPO 2013-01-14 chendx Add begin for get bms vbatt ocv */
+int get_bms_ocv_vbatt(int ibat_ua,int vbat_uv);
+/* OPPO 2013-01-14 chendx Add end for get bms vbatt ocv */
+
+void backup_calib_soc(int calib_soc);
+int read_calib_soc(void);
+
 /**
  * pm8921_bms_get_vsense_avg - return the voltage across the sense
  *				resitor in microvolts
@@ -180,7 +196,7 @@ void pm8921_bms_battery_removed(void);
  *			for reporting soc.
  */
 void pm8921_bms_battery_inserted(void);
-#else
+#else /* defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE) */
 static inline int pm8921_bms_get_vsense_avg(int *result)
 {
 	return -ENXIO;
@@ -228,6 +244,6 @@ static inline int pm8921_bms_get_current_max(void)
 }
 static inline void pm8921_bms_battery_removed(void) {}
 static inline void pm8921_bms_battery_inserted(void) {}
-#endif
+#endif /* defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE) */
 
 #endif
